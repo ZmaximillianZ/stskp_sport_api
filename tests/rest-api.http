@@ -1,51 +1,181 @@
-POST http://localhost:8081/api/v1/auth?username=john&password=123123
+POST https://localhost:1323/api/v1/auth?username=john&password=123123
 Accept: */*
 Cache-Control: no-cache
 Content-Type: application/json
 
 ###
 
-POST http://localhost:8081/api/v1/create?username=john&password=123123
+###
+
+POST https://localhost:1323/api/v1/create?username=some_test_6&password=123123
 Accept: */*
 Cache-Control: no-cache
 Content-Type: application/json
 
 ####
 
-PUT http://localhost:8081/api/v1/users/3
+PUT https://localhost:1323/api/v1/users/3
 Accept: */*
 Cache-Control: no-cache
 Content-Type: application/json
-X-AUTH-TOKEN: token
+Authorization: Bearer token
 
 {
-  "email": "john@mail.com",
-  "state": 3,
-  "username": "John"
+  "email": "test06241827222@mail.com",
+  "state": 6,
+  "username": "new edit"
 }
 
 ###
 
-GET http://localhost:8081/api/v1/users/3
-Accept: */*
-Cache-Control: no-cache
+GET https://localhost:1323/api/v1/users/4
 Content-Type: application/json
-X-AUTH-TOKEN: token
+Authorization: Bearer token
 
 ###
 
-GET http://localhost:8081/api/v1/users
+GET https://localhost:1323/api/v1/users/
 Accept: */*
 Cache-Control: no-cache
 Content-Type: application/json
-X-AUTH-TOKEN: token
+Authorization: Bearer token
 
 ###
 
-DELETE http://localhost:8081/api/v1/users/39
+DELETE https://localhost:1323/api/v1/users/4
 Accept: */*
 Cache-Control: no-cache
 Content-Type: application/json
-X-AUTH-TOKEN: token
+Authorization: Bearer token
+
+############# WORKOUT #############
+
+POST https://localhost:1323/api/v1/workout/create
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+{
+  "description": "My pretty train",
+  "user_id": 2
+}
+
+####
+
+GET https://localhost:1323/api/v1/workout/all
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+####
+
+PUT https://localhost:1323/api/v1/workout/2
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+{
+  "description": "My fffucking workout"
+}
 
 ###
+
+DELETE https://localhost:1323/api/v1/workout/2
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+######### WORKOUT #############
+
+######### WORKOUT TYPE #############
+
+POST https://localhost:1323/api/v1/workout-type/create
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+{
+  "name": "workout type child",
+  "parent_id": 1,
+  "type": 4
+}
+
+####
+
+GET https://localhost:1323/api/v1/workout-type/all
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+####
+
+PUT https://localhost:1323/api/v1/workout-type/3
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+{
+  "name": "My fffucking workout type"
+}
+
+###
+
+DELETE https://localhost:1323/api/v1/workout-type/3
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+######### WORKOUT TYPE #############
+
+######### WORKOUT VALUE #############
+
+POST https://localhost:1323/api/v1/workout-value/create
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+{
+  "workout_id": 4,
+  "workout_type_id": 1,
+  "value": 144.0,
+  "unit": 7
+}
+
+####
+
+GET https://localhost:1323/api/v1/workout-value/all
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+###
+
+PUT https://localhost:1323/api/v1/workout-value/2
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token
+
+{
+  "value": 5200.0,
+  "started_at": "2021-06-29T20:00:00Z",
+  "ended_at": "2021-06-29T21:00:00Z"
+}
+
+###
+
+DELETE https://localhost:1323/api/v1/workout-value/3
+Accept: */*
+Cache-Control: no-cache
+Content-Type: application/json
+Authorization: Bearer token

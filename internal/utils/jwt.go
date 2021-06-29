@@ -1,15 +1,13 @@
 package utils
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"strconv"
 	"time"
 
-	"github.com/ZmaximillianZ/stskp_sport_api/internal/logging"
 	"github.com/dgrijalva/jwt-go"
 )
 
-var jwtSecret []byte
+var jwtSecret = []byte("get_key_from_env")
 
 type Claims struct {
 	Username string `json:"username"`
@@ -23,22 +21,18 @@ const (
 )
 
 // GenerateToken generate tokens used for auth
-func GenerateToken(username, password string) (string, error) {
+func GenerateToken(username, password string, id int) (string, error) {
 	nowTime := time.Now()
-	expireTime := nowTime.Add(time.Hour * hoursInDay * daysInMonth) // 1 month by develop
-
-	claims := Claims{
-		encodeSHA256(username), // It doesn't make sense to encrypt data in JWT token. This is contrary to JWT paradigm.
-		encodeSHA256(password), // FIXME: MD5 IS NOT SECURE. Password should not be transferred to frontend part.
-		jwt.StandardClaims{
-			ExpiresAt: expireTime.Unix(),
-			Issuer:    "stskp-api",
-		},
-	}
-
-	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return tokenClaims.SignedString(jwtSecret)
+	// Create token
+	token := jwt.New(jwt.SigningMethodHS256)
+	// Set claims
+	claims := token.Claims.(jwt.MapClaims)
+	claims["id"] = strconv.Itoa(id)
+	claims["name"] = username
+	claims["Issuer"] = "stskp-api"
+	claims["admin"] = true
+	claims["exp"] = nowTime.Add(time.Hour * hoursInDay * daysInMonth).Unix() // 1 month by develop
+	return token.SignedString(jwtSecret)
 }
 
 // ParseToken parsing token
@@ -57,18 +51,4 @@ func ParseToken(token string) (*Claims, error) {
 	}
 
 	return nil, err
-}
-
-// EncodeSHA256 md5 encryption
-func encodeSHA256(value string) string {
-	m := sha256.New()
-	n, err := m.Write([]byte(value))
-	if err != nil {
-		logging.Error(err)
-	}
-	if n == 0 {
-		logging.Error("no any bytes written")
-	}
-
-	return hex.EncodeToString(m.Sum(nil))
 }

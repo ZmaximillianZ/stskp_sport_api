@@ -6,18 +6,18 @@ import (
 	"github.com/ZmaximillianZ/stskp_sport_api/internal/e"
 	"github.com/ZmaximillianZ/stskp_sport_api/internal/utils"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 // JWT is jwt middleware
-func JWT() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func JWT(c echo.Context) echo.MiddlewareFunc {
+	return func(h echo.HandlerFunc) echo.HandlerFunc {
 		var code int
 		var data interface{}
 		code = e.Success
 		// TODO: recommended use Authentication: Bearer
 		// https://swagger.io/docs/specification/authentication/bearer-authentication/
-		token := c.GetHeader("X-AUTH-TOKEN")
+		token := c.Request().Header.Get("X-AUTH-TOKEN")
 		if token == "" {
 			code = e.InvalidParams
 		} else {
@@ -33,16 +33,15 @@ func JWT() gin.HandlerFunc {
 		}
 
 		if code != e.Success {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code": code,
-				"msg":  e.GetMsg(code),
-				"data": data,
-			})
-
-			c.Abort()
-			return
+			return func(c echo.Context) error {
+				return c.JSON(http.StatusUnauthorized, echo.Map{
+					"code": code,
+					"msg":  e.GetMsg(code),
+					"data": data,
+				})
+			}
 		}
 
-		c.Next()
+		return h
 	}
 }

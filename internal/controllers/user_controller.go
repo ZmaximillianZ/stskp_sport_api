@@ -1,232 +1,171 @@
 package controllers
 
 import (
+	"errors"
+
+	"github.com/ZmaximillianZ/stskp_sport_api/internal/dto"
+	"github.com/go-playground/validator"
+
 	"github.com/ZmaximillianZ/stskp_sport_api/internal/e"
-	"github.com/ZmaximillianZ/stskp_sport_api/internal/logging"
 	"github.com/ZmaximillianZ/stskp_sport_api/internal/models"
 	"github.com/ZmaximillianZ/stskp_sport_api/internal/utils"
-	"github.com/astaxie/beego/validation"
+	"github.com/labstack/echo/v4"
 
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/ZmaximillianZ/stskp_sport_api/internal/app"
 	"github.com/ZmaximillianZ/stskp_sport_api/internal/contractions"
-	"github.com/gin-gonic/gin"
 )
 
 // UserController is HTTP controller for manage users
 type UserController struct {
 	repo         contractions.UserRepository
-	validation   validation.Validation
 	errorHandler e.ErrorHandler
+	BaseController
 }
 
 // NewUserController return new instance of UserController
-func NewUserController(repo contractions.UserRepository, v validation.Validation, errorHandler e.ErrorHandler) *UserController {
-	return &UserController{repo, v, errorHandler}
+func NewUserController(repo contractions.UserRepository, errorHandler e.ErrorHandler, v *validator.Validate) *UserController {
+	return &UserController{
+		repo:           repo,
+		errorHandler:   errorHandler,
+		BaseController: BaseController{*v},
+	}
 }
 
-// GetUserByID return user by id
-// @Summary Show a user
-// @Description Get user by id
-// @Produce  json
-// @Security JWT
-// @Param id path int true "User ID"
-// @Success 200 {object} models.User
-// @Header 200 {string} X-AUTH-TOKEN "qwerty"
-// @Failure 500 {object} app.Response
-// @Router /api/v1/users/{id}/ [get]
-func (ctr *UserController) GetUserByID(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, err.Error())
-		return
+// GetByID return user by id
+// example: /api/v1/users/{id}/
+func (ctr *UserController) GetByID(c echo.Context) error {
+	var (
+		err  error
+		user models.User
+	)
+	if user, err = ctr.getUserByID(c); err != nil {
+		return err
 	}
-
-	user, err := ctr.repo.GetByID(int(id))
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	c.JSON(http.StatusOK, user)
+	return c.JSON(http.StatusOK, dto.LoadUserDTOFromModel(&user)) // todo: is it have sense?
 }
 
-// @Summary Authenticate
-// @Description user authorization
-// @Produce  json
-// @Param username query string true "userName"
-// @Param password query string true "password"
-// @Header 200 {string} Access-Control-Allow_origin "*"
-// @Success 200 {object} app.Response
-// @Failure 500 {object} app.Response
-// @Router /api/v1/auth [post]
-func (ctr *UserController) Authenticate(c *gin.Context) {
-	username, _ := c.GetQuery("username")
-	password, _ := c.GetQuery("password")
+// Authenticate @Summary Authenticate
+// description: user authorization
+// example: /api/v1/auth
+func (ctr *UserController) Authenticate(c echo.Context) error {
+	username := c.QueryParam("username")
+	password := c.QueryParam("password")
 	a := models.Auth{Username: username, Password: password}
-	ok, _ := ctr.validation.Valid(&a)
-
-	if !ok {
-		if ctr.validation.HasErrors() {
-			// maybe c.Error(valid.Errors)
-			app.MarkErrors(ctr.validation.Errors)
-		}
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+	if errValidation := ctr.BaseController.validator.Struct(&a); errValidation != nil {
+		return errValidation
 	}
-	user, err := ctr.repo.GetByUsername(username)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, err.Error())
-		return
+	var (
+		user  models.User
+		err   error
+		token string
+	)
+	if user, err = ctr.repo.GetByUsername(username); err != nil {
+		return err
 	}
-	invalid := user.InvalidPassword(password)
-
-	if invalid {
-		c.AbortWithStatusJSON(http.StatusBadRequest, "invalid password")
-		return
+	if user.InvalidPassword(password) {
+		return errors.New("invalid password")
 	}
-
-	token, err := utils.GenerateToken(a.Username, a.Password)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
+	if token, err = utils.GenerateToken(a.Username, a.Password, user.ID); err != nil {
+		return err
 	}
-
-	c.JSON(http.StatusOK, map[string]string{"token": token})
+	return c.JSON(http.StatusOK, map[string]string{"token": token})
 }
 
-// @Summary List users
-// @Description Get users with params
-// @Produce  json
-// @Security JWT
-// @Success 200 {array} models.User
-// @Failure 500 {object} app.Response
-// @Router /api/v1/users [get]
-func (ctr *UserController) GetUsers(c *gin.Context) {
-	users, err := ctr.repo.GetUsers()
-	if err != nil {
-		logging.Error(err)
-		c.AbortWithStatus(http.StatusInternalServerError)
-
-		return
+// GetUsers return list of users
+// example: /api/v1/users
+func (ctr *UserController) GetUsers(c echo.Context) error {
+	var (
+		users models.Users
+		err   error
+	)
+	if users, err = ctr.repo.GetAll(); err != nil {
+		return err
 	}
 
-	c.JSON(http.StatusOK, users)
+	return c.JSON(http.StatusOK, dto.LoadUserDTOCollectionFromModel(&users))
 }
 
-// @Summary Create user
-// @Description Create user
-// @Produce  json
-// @Param username query string true "userName"
-// @Param password query string true "password"
-// @Success 200 {object} app.Response
-// @Failure 500 {object} app.Response
-// @Router /api/v1/create [post]
-func (ctr *UserController) CreateUser(c *gin.Context) {
-	username, _ := c.GetQuery("username")
-	password, _ := c.GetQuery("password")
+// Create create user
+// example: /api/v1/create
+func (ctr *UserController) Create(c echo.Context) error {
+	username := c.QueryParam("username")
+	password := c.QueryParam("password")
 	a := models.Auth{Username: username, Password: password}
-	ok, _ := ctr.validation.Valid(&a)
-	if !ok {
-		if ctr.validation.HasErrors() {
-			app.MarkErrors(ctr.validation.Errors)
-		}
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+	if errValidation := ctr.BaseController.validator.Struct(&a); errValidation != nil {
+		return errValidation
 	}
-	userExist, err := ctr.repo.GetByUsername(a.Username)
-	if err != nil {
-		logging.Error(err)
-		c.AbortWithStatus(e.Error)
-		return
+	var (
+		userExist models.User
+		err       error
+		user      models.User
+	)
+	if userExist, err = ctr.repo.GetByUsername(a.Username); err != nil {
+		return err
 	}
 	if userExist.ID != 0 {
-		c.JSON(e.UserExists, map[string]string{"message": e.GetMsg(e.UserExists), "details": a.Username})
-		return
+		return errors.New("user with username " + a.Username + " exists")
 	}
-	user := models.User{Username: a.Username, State: models.StateHalfRegistration, CreatedAt: time.Now()}
-	if err := user.SetPassword(a.Password); err != nil {
-		logging.Error(err)
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+	user = models.User{Username: a.Username, State: models.StateHalfRegistration, CreatedAt: time.Now()}
+	if errSetPassword := user.SetPassword(a.Password); errSetPassword != nil {
+		return errSetPassword
 	}
-	if errSave := ctr.repo.CreateUser(&user); errSave != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
-		logging.Error(errSave)
-		ctr.errorHandler.Handle(c, errSave)
-		return
+	if errCreateUser := ctr.repo.Create(&user); errCreateUser != nil {
+		return errCreateUser
 	}
-	c.JSON(e.Success, map[string]string{"id": strconv.Itoa(user.ID), "username": user.Username})
+	return c.JSON(http.StatusOK, dto.LoadUserDTOFromModel(&user))
 }
 
-// UpdateUser return user by id
-// @Summary Update a user
-// @Description Update user by id
-// @Produce  json
-// @Security JWT
-// @Param id path int true "User ID"
-// @Success 200 {object} models.User
-// @Header 200 {string} X-AUTH-TOKEN "qwerty"
-// @Failure 500 {object} app.Response
-// @Router /api/v1/users/{id}/ [put]
-func (ctr *UserController) UpdateUser(c *gin.Context) {
-	id, idError := strconv.Atoi(c.Param("id"))
-	if idError != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-
-		return
+// Update return user by id
+// example: /api/v1/users/{id}/
+func (ctr *UserController) Update(c echo.Context) error {
+	var (
+		err  error
+		user models.User
+	)
+	if user, err = ctr.getUserByID(c); err != nil {
+		return err
 	}
-	user, err := ctr.repo.GetByID(id)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
+	dtoUser := dto.LoadUserDTOFromModel(&user)
+	if errBindOrValidate := ctr.BindAndValidate(c, dtoUser); errBindOrValidate != nil {
+		return errBindOrValidate
 	}
-	if errBindingUserToJSON := c.ShouldBindJSON(&user); errBindingUserToJSON != nil {
-		logging.Error(errBindingUserToJSON)
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
+	if errUpdateUser := ctr.repo.Update(dto.LoadUserModelFromDTO(dtoUser)); errUpdateUser != nil {
+		return errUpdateUser
 	}
-	b, err := ctr.validation.Valid(user)
-	if err != nil || !b {
-		app.MarkErrors(ctr.validation.Errors)
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-	if errUpdate := ctr.repo.UpdateUser(&user); errUpdate != nil {
-		logging.Error(errUpdate)
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-	c.JSON(http.StatusOK, user)
+	return c.JSON(http.StatusOK, dtoUser)
 }
 
-// DeleteUser return user by id
-// @Summary Delete a user
-// @Description Delete user by id
-// @Produce  json
-// @Security JWT
-// @Param id path int true "User ID"
-// @Success 200 {object} models.User
-// @Header 200 {string} X-AUTH-TOKEN "qwerty"
-// @Failure 500 {object} app.Response
-// @Router /api/v1/users/{id}/ [delete]
-func (ctr *UserController) DeleteUser(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, err.Error())
-		return
+// Delete return user by id
+// description: Delete user by id
+// example: /api/v1/users/{id}/ [delete]
+func (ctr *UserController) Delete(c echo.Context) error {
+	var (
+		err  error
+		user models.User
+	)
+	if user, err = ctr.getUserByID(c); err != nil {
+		return err
+	}
+	if errDelete := ctr.repo.Delete(&user); errDelete != nil {
+		return errDelete
+	}
+	return c.JSON(http.StatusOK, "OK")
+}
+
+func (ctr *UserController) getUserByID(c echo.Context) (models.User, error) {
+	var (
+		id   int64
+		err  error
+		user models.User
+	)
+	if id, err = ctr.BaseController.GetID(c); err != nil {
+		return user, err
+	}
+	if user, err = ctr.repo.GetByID(int(id)); err != nil {
+		return user, err
 	}
 
-	user, err := ctr.repo.GetByID(int(id))
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if errDelete := ctr.repo.DeleteUser(&user); errDelete != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-	}
-	c.JSON(http.StatusOK, "OK")
+	return user, err
 }

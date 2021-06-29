@@ -12,15 +12,15 @@
 # awesome go
 [awesome go](https://awesome-go.com/)
 
-# go gin contrib
-[go gin contrib](https://github.com/gin-gonic/contrib)
-
 #go jwt 
 [go jwt](https://github.com/appleboy/gin-jwt) 
 
+# go echo
+[go echo](https://echo.labstack.com/guide/)
+
 # sqlx
 [sqlx](https://github.com/jmoiron/sqlx)
-# Plane
+# Plan
 ## Todo 	
 - API
 - Documentation
@@ -37,53 +37,62 @@
     - authorization
     - model of user, workout, workout_type, workout_value
     - password checking
-- Swagger documentation: installed, configured and set basic realization
 - sqlx: extension of database/sql for better life
-- basic query builder (find, orderBy, offsetRows, andWhere, maxResult method in repository)
-- in FindBy - set flexible field selection
-- parser query parameters
+- basic query builder (find, orderBy, offsetRows, andWhere, maxResult method in repository) (deprecated)
+- in FindBy - set flexible field selection (deprecated)
+- parser query parameters (deprecated)
 #Business logic
 ### basic entities
+ - user
  - workout
  - workout type
  - workout value
 ## Workout scheme
-##### workout_type - `(run, gym)` and
-##### workout_template - `(workout scheme of certain units for workout type)`
-имеют конечное множество значений, которое можно хранить в кеше (redis).
-##### workout_template - буду хранить в map'е, при необходимости вынесу в BD или кеш
+##### workout type - `(run, gym)` and
+##### workout template - `(workout scheme of certain units for workout type)`
+have a finite set of values that can be stored in the cache (redis).
+##### workout_template - `will store in map and maybe will move in db or cache`
 
-# Documentation
-##### Swagger
- - install
- - configure
- - basic realization
- 
 #API
+ - https
  - routes
  - cors
  - http 2.0
  
 # In progress
- - Business logic
-    - CRUD user, workout, workout_type, workout_value
-    - create routes post, get, patch, delete for user, workout, workout_type, workout_value
-    - create methods to handle crud with db
-    - describe a thing like DTO in symfony (to hide private fields as password)
-    - describe methods for basic api functional 
-        - look at work project
-        - getById, update, sort, filter, per page (offset),        
-        - get all
-        - get by id
-        - get by a field ?
-        - post
-        - patch
-        - delete
-        - order by
-        - filter
-    - algorithm
-        - create route
-        - create method in repository
-        - test it
-        - create annotation
-        - generate swagger (swag init)
+ - CRUD
+   - elements to make CRUD
+      - entities
+         - workout
+         - workout_type 
+         - workout_value
+      - controllers
+         - workout
+         - workout_type
+         - workout_value
+      - routes
+         - GET
+         - POST
+         - PUT
+         - DELETE
+      - repositories
+         - workout
+         - workout_type
+         - workout_value
+      - migration
+         - create tables
+            - workout
+            - workout_type
+            - workout_value
+ - JWT
+   - create secret key in env
+ - Logging
+   - use echo
+ - describe a thing like DTO in symfony (to hide private fields as password)
+ - describe methods for basic api functional 
+     - getById, update, sort, filter, per page (offset),        
+     - get all
+     - get by id
+     - get by a field ?
+     - order by
+     - filter

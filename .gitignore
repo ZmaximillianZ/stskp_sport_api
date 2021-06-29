@@ -6,3 +6,6 @@ var
 bin
 *.exe
 __debug_bin
+
+cert.pem
+key.pem

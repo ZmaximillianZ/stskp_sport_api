@@ -1,24 +1,35 @@
 package e
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
+	"github.com/ZmaximillianZ/stskp_sport_api/internal/logging"
+
 	"github.com/jackc/pgconn"
+	"github.com/labstack/echo/v4"
 )
 
 type ErrorHandler struct {
 }
 
-func (eh *ErrorHandler) Handle(c *gin.Context, e error) {
-	if pg := handlePgError(e); pg != nil {
-		c.JSON(
-			InvalidParams,
-			map[string]string{
-				"detail":  pg.Detail,
-				"message": pg.Message,
-				"code":    pg.Code,
-			},
-		)
-		return
+func (eh *ErrorHandler) Handle(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		e := next(c)
+		if e == nil {
+			return nil
+		}
+		if pg := handlePgError(e); pg != nil {
+			return echo.NewHTTPError(
+				http.StatusUnprocessableEntity,
+				map[string]string{
+					"detail":  pg.Detail,
+					"message": pg.Message,
+					"code":    pg.Code,
+				},
+			)
+		}
+		logging.Error(e)
+		return echo.NewHTTPError(http.StatusBadRequest, e.Error())
 	}
 }
 
